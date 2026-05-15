@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ping Pong Voice Scoreboard</title>
+    <title>Ping Pong Pro - Always On</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -29,9 +29,7 @@
 
         .container { text-align: center; width: 100%; max-width: 900px; padding: 10px; box-sizing: border-box; }
 
-        .voice-controls {
-            margin-bottom: 15px;
-        }
+        .voice-controls { margin-bottom: 15px; }
 
         #voice-btn {
             background: #444;
@@ -63,7 +61,7 @@
         .mode-btn.active { background: var(--accent); color: black; }
 
         .scoreboard { display: flex; gap: 15px; justify-content: center; width: 100%; }
-        .player-card { background: var(--card-bg); padding: 20px 10px; border-radius: 20px; flex: 1; max-width: 280px; transition: 0.2s; border: 4px solid transparent; cursor: pointer; display: flex; flex-direction: column; }
+        .player-card { background: var(--card-bg); padding: 20px 10px; border-radius: 20px; flex: 1; max-width: 280px; transition: 0.2s; border: 4px solid transparent; cursor: pointer; display: flex; flex-direction: column; position: relative; }
         .player-card.serving { border-color: var(--accent); }
 
         .player-name { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; color: #eee; outline: none; }
@@ -78,6 +76,9 @@
         .btn-reset { background: #c0392b; color: white; }
 
         .status-msg { margin-top: 10px; font-size: 0.8rem; color: #aaa; height: 1.2rem; }
+        
+        /* חיווי שהמסך "נעול" דולק */
+        .wake-lock-status { font-size: 0.7rem; color: #555; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -113,6 +114,8 @@
             <button class="action-btn btn-undo" onclick="undo()">ביטול</button>
             <button class="action-btn btn-reset" onclick="resetGame()">איפוס</button>
         </div>
+        
+        <div class="wake-lock-status" id="wake-status">הגנה מפני כיבוי מסך פעילה</div>
     </div>
 
     <script>
@@ -120,7 +123,38 @@
         let history = [];
         let gameMode = 'normal';
         let isListening = false;
+        let wakeLock = null;
 
+        // --- מניעת כיבוי מסך ---
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake Lock is active');
+                    document.getElementById('wake-status').innerText = "✔️ המסך לא יכבה בזמן המשחק";
+                    
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock was released');
+                    });
+                }
+            } catch (err) {
+                document.getElementById('wake-status').innerText = "❌ המכשיר לא תומך במניעת כיבוי מסך אוטומטי";
+            }
+        }
+
+        // הפעלה מחדש של הנעילה אם המשתמש חזר ללשונית
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        });
+
+        // בקשת הנעילה מיד עם הלחיצה הראשונה על המסך (דפדפנים דורשים אינטראקציה)
+        document.addEventListener('click', () => {
+            if (!wakeLock) requestWakeLock();
+        }, { once: true });
+
+        // --- זיהוי קולי ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
 
@@ -134,12 +168,10 @@
                 const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
                 document.getElementById('status').innerText = 'שמעתי: "' + transcript + '"';
                 
-                // שליפת שמות עדכניים מהכרטיסים
                 const name1 = document.querySelectorAll('.player-name')[0].innerText.trim().toLowerCase();
                 const name2 = document.querySelectorAll('.player-name')[1].innerText.trim().toLowerCase();
 
-                // בדיקת פקודות
-                if (transcript.includes('ביטול') || transcript.includes('טעות') || transcript.includes('חזור')) {
+                if (transcript.includes('ביטול') || transcript.includes('טעות')) {
                     undo();
                 } else if (transcript.includes(name1) || transcript.includes('כחול')) {
                     addPoint(1);
@@ -177,7 +209,6 @@
             if (history.length > 0) {
                 state = history.pop();
                 updateUI();
-                document.getElementById('status').innerText = "בוצע ביטול";
             }
         }
 
