@@ -309,10 +309,10 @@
 
                     // פקודת "מתחיל"
                     if (transcript.includes("מתחיל") || transcript.includes("מגיש")) {
-                        if (transcript.match(new RegExp(teamNames.t1 + "|כחול|כחו|חול"))) {
+                        if (transcript.match(new RegExp(teamNames.t1 + "|ול|נכון|כחול|כחו|חול"))) {
                             triggerVoiceAction(() => { firstServerOfSet = 1; updateUI(); speak(`${teamNames.t1} מתחיל`); }); break;
                         }
-                        if (transcript.match(new RegExp(teamNames.t2 + "|אדום|אדו|דום"))) {
+                        if (transcript.match(new RegExp(teamNames.t2 + "|אד|ום|אדום|אדו|דום"))) {
                             triggerVoiceAction(() => { firstServerOfSet = 2; updateUI(); speak(`${teamNames.t2} מתחיל`); }); break;
                         }
                     }
@@ -323,10 +323,10 @@
                     if (transcript.match(/צדדים|החלף צד|תחליף צד|שנה צד/)) {
                         triggerVoiceAction(() => swapSides()); break;
                     }
-                    if (transcript.match(new RegExp(teamNames.t1 + "|כחול|כחו|חול"))) {
+                    if (transcript.match(new RegExp(teamNames.t1 + "|ול|נכון|כחול|כחו|חול"))) {
                         triggerVoiceAction(() => addPoint(1)); break;
                     }
-                    if (transcript.match(new RegExp(teamNames.t2 + "|אדום|אדו|דום"))) {
+                    if (transcript.match(new RegExp(teamNames.t2 + "|אד|ום|אדום|אדו|דום"))) {
                         triggerVoiceAction(() => addPoint(2)); break;
                     }
                 }
