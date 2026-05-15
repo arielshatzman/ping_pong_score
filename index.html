@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ping Pong Pro - No Double Points</title>
+    <title>Ping Pong Pro - Ultra Stable</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -127,7 +127,7 @@
         let history = [];
         let isListening = false;
         let isNoSleepActive = false;
-        let lastActionTime = 0; // זמן הפעולה האחרונה למניעת כפילויות
+        let lastPointTime = 0; // זמן הוספת הנקודה האחרונה
 
         async function enableNoSleep() {
             if (isNoSleepActive) return;
@@ -158,10 +158,6 @@
             recognition.interimResults = true;
 
             recognition.onresult = (event) => {
-                const now = Date.now();
-                // אם עברה פחות מחצי שנייה מהנקודה האחרונה, נתעלם
-                if (now - lastActionTime < 600) return;
-
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const transcript = event.results[i][0].transcript.trim().toLowerCase();
                     document.getElementById('status').innerText = 'שומע: ' + transcript;
@@ -170,19 +166,16 @@
                     const name2 = document.querySelectorAll('.player-name')[1].innerText.trim().toLowerCase();
 
                     if (transcript.match(/(ביטול|טעות|חזור|ביטו)/)) {
-                        lastActionTime = now;
                         undo();
                         recognition.stop(); 
                         break;
                     } 
                     if (transcript.includes(name1) || transcript.match(/(כחול|חול|כחו|כח)/)) {
-                        lastActionTime = now;
                         addPoint(1);
                         recognition.stop();
                         break;
                     } 
                     if (transcript.includes(name2) || transcript.match(/(אדום|דום|אדו|אד)/)) {
-                        lastActionTime = now;
                         addPoint(2);
                         recognition.stop();
                         break;
@@ -209,6 +202,11 @@
         }
 
         function addPoint(player) {
+            const now = Date.now();
+            // חסימה: אם עברה פחות מ-1000 מילי-שניות (שנייה אחת) מהנקודה האחרונה - אל תעשה כלום
+            if (now - lastPointTime < 1000) return;
+            
+            lastPointTime = now;
             history.push({...state});
             if (player === 1) state.s1++; else state.s2++;
             updateUI();
@@ -216,6 +214,10 @@
         }
 
         function undo() {
+            const now = Date.now();
+            if (now - lastPointTime < 500) return; // הגנה קלה גם על הביטול
+            lastPointTime = now;
+
             if (history.length > 0) {
                 state = history.pop();
                 updateUI();
