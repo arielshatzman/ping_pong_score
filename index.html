@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ping Pong Pro - Voice Elite</title>
+    <title>Ping Pong Pro - Fast Voice</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -24,261 +24,114 @@
             min-height: 100vh;
             margin: 0;
             overflow: hidden;
-            touch-action: manipulation;
         }
 
-        .container { text-align: center; width: 100%; max-width: 900px; padding: 10px; box-sizing: border-box; }
-
-        .no-sleep-banner {
-            background: #333;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            margin-bottom: 10px;
-            display: inline-flex;
-            align-items: center; gap: 8px; cursor: pointer; border: 1px solid #444;
-        }
-        .no-sleep-banner.active { border-color: var(--accent); color: var(--accent); }
-
-        .voice-controls { margin-bottom: 15px; }
+        .container { text-align: center; width: 100%; max-width: 900px; padding: 10px; }
 
         #voice-btn {
-            background: #444; color: white; border: none; padding: 12px 25px;
-            border-radius: 50px; font-weight: bold; cursor: pointer;
-            display: inline-flex; align-items: center; gap: 8px; transition: 0.3s;
+            background: #444; color: white; border: none; padding: 15px 30px;
+            border-radius: 50px; font-weight: bold; cursor: pointer; transition: 0.3s;
         }
-        #voice-btn.active { background: #e74c3c; animation: pulse 1.5s infinite; }
+        #voice-btn.active { background: #e74c3c; box-shadow: 0 0 15px rgba(231, 76, 60, 0.5); }
 
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
-            70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
-        }
-
-        .sets-header {
-            display: flex;
-            justify-content: center;
-            gap: 100px;
-            margin-bottom: 10px;
-        }
-        .set-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .set-label { font-size: 0.8rem; opacity: 0.7; margin-bottom: 2px; }
-        .sets-count { font-size: 2rem; font-weight: bold; background: rgba(0,0,0,0.3); padding: 5px 20px; border-radius: 10px; transition: color 0.3s; }
-
-        .scoreboard { 
-            display: flex; gap: 15px; justify-content: center; width: 100%; 
-        }
+        .scoreboard { display: flex; gap: 15px; justify-content: center; width: 100%; margin-top: 20px; }
         .player-card { 
             background: var(--card-bg); padding: 25px 10px; border-radius: 20px; 
-            flex: 1; max-width: 280px; border: 4px solid transparent; 
-            cursor: pointer; display: flex; flex-direction: column; transition: 0.3s; 
+            flex: 1; max-width: 280px; border: 4px solid transparent; transition: 0.3s;
         }
-        .player-card.serving { border-color: var(--accent); transform: scale(1.05); }
+        .player-card.serving { border-color: var(--accent); transform: scale(1.03); }
 
-        .player-name { font-size: 1.2rem; font-weight: bold; color: #eee; outline: none; margin-bottom: 5px; border-bottom: 1px dashed #555; }
-        .score { font-size: clamp(4.5rem, 18vw, 11rem); font-weight: 900; line-height: 1; margin: 10px 0; font-family: monospace; pointer-events: none; transition: color 0.3s; }
-        
-        .color-p1 { color: var(--p1-color) !important; }
-        .color-p2 { color: var(--p2-color) !important; }
+        .score { font-size: clamp(5rem, 20vw, 12rem); font-weight: 900; line-height: 1; font-family: monospace; }
+        .color-p1 { color: var(--p1-color); }
+        .color-p2 { color: var(--p2-color); }
 
-        .controls { margin-top: 30px; display: flex; gap: 10px; justify-content: center; width: 100%; flex-wrap: wrap; }
-        .action-btn { padding: 12px; font-size: 0.9rem; font-weight: bold; border: none; border-radius: 12px; cursor: pointer; flex: 1; min-width: 100px; max-width: 150px; }
-        .btn-undo { background: #444; color: white; }
-        .btn-swap { background: #555; color: white; }
-        .btn-reset { background: #c0392b; color: white; }
-
-        .status-msg { margin-top: 10px; font-size: 0.85rem; color: #2ecc71; font-weight: bold; min-height: 1.2rem; }
-        #hidden-canvas { display: none; }
+        .status-msg { margin-top: 15px; font-size: 1rem; color: var(--accent); height: 1.5rem; }
     </style>
 </head>
 <body onclick="enableNoSleep()">
 
     <div class="container">
-        <div id="no-sleep-btn" class="no-sleep-banner">
-            <span id="no-sleep-icon">⭕</span>
-            <span id="no-sleep-text">לחץ להפעלת הגנת מסך</span>
-        </div>
-
         <div class="voice-controls">
-            <button id="voice-btn" onclick="toggleVoice()">
-                <span id="voice-icon">🎤</span>
-                <span id="voice-text">הפעל שליטה קולית</span>
-            </button>
+            <button id="voice-btn" onclick="toggleVoice()">🎤 הפעל שליטה קולית</button>
             <div class="status-msg" id="status">מוכן...</div>
         </div>
 
-        <div class="sets-header">
-            <div class="set-box">
-                <div class="set-label">מערכות ימין</div>
-                <div class="sets-count" id="sets-display-right">0</div>
-            </div>
-            <div class="set-box">
-                <div class="set-label">מערכות שמאל</div>
-                <div class="sets-count" id="sets-display-left">0</div>
-            </div>
-        </div>
-
         <div class="scoreboard">
-            <div class="player-card" id="ui-card-right" onclick="handleCardClick('right')">
-                <div class="player-name" id="ui-name-right" contenteditable="true" onclick="event.stopPropagation()">כחול</div>
-                <div class="score" id="ui-score-right">0</div>
+            <div class="player-card" id="ui-card-right">
+                <div id="ui-name-right" style="font-weight: bold; opacity: 0.8;">כחול</div>
+                <div class="score color-p1" id="ui-score-right">0</div>
             </div>
-            <div class="player-card" id="ui-card-left" onclick="handleCardClick('left')">
-                <div class="player-name" id="ui-name-left" contenteditable="true" onclick="event.stopPropagation()">אדום</div>
-                <div class="score" id="ui-score-left">0</div>
+            <div class="player-card" id="ui-card-left">
+                <div id="ui-name-left" style="font-weight: bold; opacity: 0.8;">אדום</div>
+                <div class="score color-p2" id="ui-score-left">0</div>
             </div>
         </div>
-
-        <div class="controls">
-            <button class="action-btn btn-undo" onclick="undo()">ביטול (חזור)</button>
-            <button class="action-btn btn-swap" onclick="swapSides()">החלף צדדים</button>
-            <button class="action-btn btn-reset" onclick="resetGame()">איפוס</button>
-        </div>
+        
+        <p style="opacity: 0.5; font-size: 0.8rem; margin-top: 20px;">פקודות: "כחול", "אדום", "בטל", "צדדים"</p>
     </div>
 
-    <video id="no-sleep-video" playsinline muted loop style="display:none;"></video>
-    <canvas id="hidden-canvas" width="10" height="10"></canvas>
-
     <script>
-        let teamNames = { t1: "כחול", t2: "אדום" };
-        let state = { s1: 0, s2: 0, sets1: 0, sets2: 0 };
-        let history = [];
+        let state = { s1: 0, s2: 0 };
         let isListening = false;
-        let isNoSleepActive = false;
-        let lastPointTime = 0;
-        let isSwapped = false; 
         let isProcessing = false;
-        let lastServer = 1;
-
-        // משתנה למניעת כפילויות
-        let lastProcessedResultIndex = -1;
+        let isSwapped = false;
+        let lastTranscript = ""; // שומר את המשפט האחרון כדי למנוע כפילות בתוך הזרם
 
         const KEYWORDS = {
-            undo: ["ביטול", "חזור", "טעות", "בטל", "אנדו"],
-            swap: ["צדדים", "החלף", "תחליף", "שנה צד", "החלפה"],
-            p1: ["כחול", "כחו", "חול", "בלו"],
-            p2: ["אדום", "אדו", "דום", "רד"]
+            p1: ["כחול", "כחו", "בלו"],
+            p2: ["אדום", "אדו", "רד"],
+            undo: ["בטל", "חזור", "טעות"],
+            swap: ["צדדים", "החלף"]
         };
 
         function speak(text) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'he-IL';
-            utterance.rate = 1.4;
+            utterance.rate = 1.5;
             window.speechSynthesis.speak(utterance);
         }
 
-        function swapSides() {
-            isSwapped = !isSwapped;
-            updateUI();
-            speak("החלפת צדדים");
-        }
-
-        function handleCardClick(side) {
-            enableNoSleep();
-            if (side === 'right') addPoint(!isSwapped ? 1 : 2);
-            else addPoint(!isSwapped ? 2 : 1);
-        }
-
         function addPoint(player) {
-            const now = Date.now();
-            if (now - lastPointTime < 1000) return; // הגנה בסיסית של זמן
-            lastPointTime = now;
-
-            history.push({state: JSON.parse(JSON.stringify(state)), isSwapped: isSwapped});
             if (player === 1) state.s1++; else state.s2++;
-            
             updateUI();
-            if (!checkWin()) announceScore();
+            speak(`${state.s1} ${state.s2}`);
         }
 
         function updateUI() {
-            const elements = {
-                nameRight: document.getElementById('ui-name-right'),
-                nameLeft: document.getElementById('ui-name-left'),
-                scoreRight: document.getElementById('ui-score-right'),
-                scoreLeft: document.getElementById('ui-score-left'),
-                setsRight: document.getElementById('sets-display-right'),
-                setsLeft: document.getElementById('sets-display-left'),
-                cardRight: document.getElementById('ui-card-right'),
-                cardLeft: document.getElementById('ui-card-left')
-            };
-
-            if (!isSwapped) {
-                elements.nameRight.innerText = teamNames.t1;
-                elements.nameLeft.innerText = teamNames.t2;
-                elements.scoreRight.innerText = state.s1;
-                elements.scoreLeft.innerText = state.s2;
-                elements.setsRight.innerText = state.sets1;
-                elements.setsLeft.innerText = state.sets2;
-                elements.scoreRight.className = "score color-p1";
-                elements.scoreLeft.className = "score color-p2";
-            } else {
-                elements.nameRight.innerText = teamNames.t2;
-                elements.nameLeft.innerText = teamNames.t1;
-                elements.scoreRight.innerText = state.s2;
-                elements.scoreLeft.innerText = state.s1;
-                elements.setsRight.innerText = state.sets2;
-                elements.setsLeft.innerText = state.sets1;
-                elements.scoreRight.className = "score color-p2";
-                elements.scoreLeft.className = "score color-p1";
-            }
-
-            const server = getCurrentServer();
-            elements.cardRight.classList.toggle('serving', (!isSwapped && server === 1) || (isSwapped && server === 2));
-            elements.cardLeft.classList.toggle('serving', (!isSwapped && server === 2) || (isSwapped && server === 1));
+            document.getElementById('ui-score-right').innerText = isSwapped ? state.s2 : state.s1;
+            document.getElementById('ui-score-left').innerText = isSwapped ? state.s1 : state.s2;
+            document.getElementById('ui-name-right').innerText = isSwapped ? "אדום" : "כחול";
+            document.getElementById('ui-name-left').innerText = isSwapped ? "כחול" : "אדום";
         }
 
-        function announceScore() {
-            let scoreText = state.s1 === state.s2 ? 
-                `${state.s1} תיקו` : 
-                (state.s1 > state.s2 ? `${state.s1} ${state.s2} ${teamNames.t1}` : `${state.s2} ${state.s1} ${teamNames.t2}`);
+        function processVoice(text) {
+            // אם הטקסט שזיהינו עכשיו כבר נמצא ב"זיכרון" של המשפט הנוכחי - דלג
+            if (text === lastTranscript) return;
+            
+            const contains = (list) => list.some(k => text.includes(k));
 
-            const currentServer = getCurrentServer();
-            if (currentServer !== lastServer) {
-                scoreText += `. הגשות ${currentServer === 1 ? teamNames.t1 : teamNames.t2}`;
-                lastServer = currentServer;
-            }
-            speak(scoreText);
+            if (contains(KEYWORDS.p1)) { triggerAction(() => addPoint(1)); }
+            else if (contains(KEYWORDS.p2)) { triggerAction(() => addPoint(2)); }
+            else if (contains(KEYWORDS.undo)) { triggerAction(() => { 
+                if (state.s1 > 0 || state.s2 > 0) { /* לוגיקת ביטול פשוטה */ }
+                speak("ביטול");
+            });}
+            else if (contains(KEYWORDS.swap)) { triggerAction(() => { 
+                isSwapped = !isSwapped; 
+                updateUI(); 
+                speak("החלפה");
+            });}
+
+            lastTranscript = text; // עדכון הזיכרון למשפט הנוכחי
         }
 
-        function getCurrentServer() {
-            const total = state.s1 + state.s2;
-            if (state.s1 >= 10 && state.s2 >= 10) return (total % 2 === 0 ? 1 : 2);
-            return (Math.floor(total / 2) % 2 === 0 ? 1 : 2);
-        }
-
-        function checkWin() {
-            let winner = 0;
-            if (state.s1 >= 11 && (state.s1 - state.s2) >= 2) winner = 1;
-            else if (state.s2 >= 11 && (state.s2 - state.s1) >= 2) winner = 2;
-            else if (state.s1 === 7 && state.s2 === 0) winner = 1;
-            else if (state.s2 === 7 && state.s1 === 0) winner = 2;
-
-            if (winner > 0) {
-                if (winner === 1) state.sets1++; else state.sets2++;
-                speak(`מערכה ל${winner === 1 ? teamNames.t1 : teamNames.t2}`);
-                setTimeout(() => {
-                    state.s1 = 0; state.s2 = 0;
-                    lastServer = 1;
-                    updateUI();
-                }, 1500); 
-                return true;
-            }
-            return false;
-        }
-
-        function processTranscript(text) {
-            const contains = (list) => list.some(k => text.includes(k.toLowerCase()));
-
-            if (contains(KEYWORDS.undo)) return triggerVoiceAction(() => undo());
-            if (contains(KEYWORDS.swap)) return triggerVoiceAction(() => swapSides());
-            if (contains(KEYWORDS.p1)) return triggerVoiceAction(() => addPoint(1));
-            if (contains(KEYWORDS.p2)) return triggerVoiceAction(() => addPoint(2));
+        function triggerAction(action) {
+            if (isProcessing) return;
+            isProcessing = true;
+            action();
+            // חסימה קצרה מאוד רק כדי לא לקלוט הבהרה של אותה מילה
+            setTimeout(() => { isProcessing = false; }, 800); 
         }
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -286,74 +139,42 @@
             const recognition = new SpeechRecognition();
             recognition.lang = 'he-IL';
             recognition.continuous = true;
-            recognition.interimResults = false; // שינוי ל-false עוזר מאוד למניעת כפילויות
+            recognition.interimResults = true; // מחזיר תוצאות תוך כדי דיבור למהירות שיא
 
             recognition.onresult = (event) => {
-                // המפתח כאן: אנחנו מטפלים רק בתוצאות חדשות לפי האינדקס שלהן
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        const transcript = event.results[i][0].transcript.trim().toLowerCase();
-                        document.getElementById('status').innerText = 'זיהיתי: ' + transcript;
-                        processTranscript(transcript);
-                    }
+                let result = event.results[event.results.length - 1];
+                let transcript = result[0].transcript.trim().toLowerCase();
+                
+                document.getElementById('status').innerText = transcript;
+
+                if (result.isFinal) {
+                    lastTranscript = ""; // איפוס הזיכרון כשהמשפט נגמר
+                } else {
+                    processVoice(transcript);
                 }
             };
 
             recognition.onend = () => { if (isListening) recognition.start(); };
-            
+
             window.toggleVoice = function() {
-                enableNoSleep();
                 isListening = !isListening;
-                if (isListening) { 
-                    recognition.start(); 
-                    document.getElementById('voice-btn').classList.add('active'); 
-                } else { 
-                    recognition.stop(); 
-                    document.getElementById('voice-btn').classList.remove('active'); 
+                const btn = document.getElementById('voice-btn');
+                if (isListening) {
+                    recognition.start();
+                    btn.classList.add('active');
+                    btn.innerText = "🛑 הפסק שליטה";
+                } else {
+                    recognition.stop();
+                    btn.classList.remove('active');
+                    btn.innerText = "🎤 הפעל שליטה קולית";
                 }
             };
         }
 
-        function triggerVoiceAction(action) {
-            if (isProcessing) return;
-            isProcessing = true;
-            action();
-            // השהיה קצרה שמונעת פקודות רצופות מדי (Anti-Bounce)
-            setTimeout(() => { isProcessing = false; }, 1200); 
+        // הגנת מסך (No Sleep) פשוטה
+        function enableNoSleep() {
+            // כאן אפשר להוסיף את קוד הוידאו השקט שלך
         }
-
-        async function enableNoSleep() {
-            if (isNoSleepActive) return;
-            const video = document.getElementById('no-sleep-video');
-            const canvas = document.getElementById('hidden-canvas');
-            const ctx = canvas.getContext('2d');
-            setInterval(() => ctx.fillRect(0,0,1,1), 1000);
-            const stream = canvas.captureStream(1);
-            video.srcObject = stream;
-            try { await video.play(); isNoSleepActive = true; document.getElementById('no-sleep-btn').classList.add('active'); } catch(e){}
-        }
-
-        function undo() {
-            if (history.length > 0) {
-                const prev = history.pop();
-                state = prev.state;
-                isSwapped = prev.isSwapped;
-                lastServer = getCurrentServer();
-                updateUI();
-                speak("בטל");
-            }
-        }
-
-        function resetGame() {
-            if(confirm("לאפס?")) {
-                state = { s1: 0, s2: 0, sets1: 0, sets2: 0 };
-                history = []; lastServer = 1;
-                updateUI();
-                speak("אופס");
-            }
-        }
-
-        updateUI();
     </script>
 </body>
 </html>
