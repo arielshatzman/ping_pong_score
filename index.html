@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ping Pong Pro - Voice Keywords</title>
+    <title>Ping Pong Pro - Voice Elite</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -154,7 +154,9 @@
         let isProcessing = false;
         let lastServer = 1;
 
-        // מילות מפתח לזיהוי מהיר ומדויק
+        // משתנה למניעת כפילויות
+        let lastProcessedResultIndex = -1;
+
         const KEYWORDS = {
             undo: ["ביטול", "חזור", "טעות", "בטל", "אנדו"],
             swap: ["צדדים", "החלף", "תחליף", "שנה צד", "החלפה"],
@@ -178,16 +180,13 @@
 
         function handleCardClick(side) {
             enableNoSleep();
-            if (side === 'right') {
-                addPoint(!isSwapped ? 1 : 2);
-            } else {
-                addPoint(!isSwapped ? 2 : 1);
-            }
+            if (side === 'right') addPoint(!isSwapped ? 1 : 2);
+            else addPoint(!isSwapped ? 2 : 1);
         }
 
         function addPoint(player) {
             const now = Date.now();
-            if (now - lastPointTime < 1500) return; 
+            if (now - lastPointTime < 1000) return; // הגנה בסיסית של זמן
             lastPointTime = now;
 
             history.push({state: JSON.parse(JSON.stringify(state)), isSwapped: isSwapped});
@@ -198,59 +197,50 @@
         }
 
         function updateUI() {
-            const nameRight = document.getElementById('ui-name-right');
-            const nameLeft = document.getElementById('ui-name-left');
-            const scoreRight = document.getElementById('ui-score-right');
-            const scoreLeft = document.getElementById('ui-score-left');
-            const setsRight = document.getElementById('sets-display-right');
-            const setsLeft = document.getElementById('sets-display-left');
-            const cardRight = document.getElementById('ui-card-right');
-            const cardLeft = document.getElementById('ui-card-left');
+            const elements = {
+                nameRight: document.getElementById('ui-name-right'),
+                nameLeft: document.getElementById('ui-name-left'),
+                scoreRight: document.getElementById('ui-score-right'),
+                scoreLeft: document.getElementById('ui-score-left'),
+                setsRight: document.getElementById('sets-display-right'),
+                setsLeft: document.getElementById('sets-display-left'),
+                cardRight: document.getElementById('ui-card-right'),
+                cardLeft: document.getElementById('ui-card-left')
+            };
 
             if (!isSwapped) {
-                nameRight.innerText = teamNames.t1;
-                nameLeft.innerText = teamNames.t2;
-                scoreRight.innerText = state.s1;
-                scoreLeft.innerText = state.s2;
-                setsRight.innerText = state.sets1;
-                setsLeft.innerText = state.sets2;
-                scoreRight.className = "score color-p1";
-                scoreLeft.className = "score color-p2";
+                elements.nameRight.innerText = teamNames.t1;
+                elements.nameLeft.innerText = teamNames.t2;
+                elements.scoreRight.innerText = state.s1;
+                elements.scoreLeft.innerText = state.s2;
+                elements.setsRight.innerText = state.sets1;
+                elements.setsLeft.innerText = state.sets2;
+                elements.scoreRight.className = "score color-p1";
+                elements.scoreLeft.className = "score color-p2";
             } else {
-                nameRight.innerText = teamNames.t2;
-                nameLeft.innerText = teamNames.t1;
-                scoreRight.innerText = state.s2;
-                scoreLeft.innerText = state.s1;
-                setsRight.innerText = state.sets2;
-                setsLeft.innerText = state.sets1;
-                scoreRight.className = "score color-p2";
-                scoreLeft.className = "score color-p1";
+                elements.nameRight.innerText = teamNames.t2;
+                elements.nameLeft.innerText = teamNames.t1;
+                elements.scoreRight.innerText = state.s2;
+                elements.scoreLeft.innerText = state.s1;
+                elements.setsRight.innerText = state.sets2;
+                elements.setsLeft.innerText = state.sets1;
+                elements.scoreRight.className = "score color-p2";
+                elements.scoreLeft.className = "score color-p1";
             }
 
             const server = getCurrentServer();
-            if (!isSwapped) {
-                cardRight.classList.toggle('serving', server === 1);
-                cardLeft.classList.toggle('serving', server === 2);
-            } else {
-                cardRight.classList.toggle('serving', server === 2);
-                cardLeft.classList.toggle('serving', server === 1);
-            }
+            elements.cardRight.classList.toggle('serving', (!isSwapped && server === 1) || (isSwapped && server === 2));
+            elements.cardLeft.classList.toggle('serving', (!isSwapped && server === 2) || (isSwapped && server === 1));
         }
 
         function announceScore() {
-            let scoreText = "";
-            if (state.s1 === state.s2) {
-                scoreText = `${state.s1} ${state.s2} תיקו`;
-            } else if (state.s1 > state.s2) {
-                scoreText = `${state.s1} ${state.s2} ${teamNames.t1}`;
-            } else {
-                scoreText = `${state.s2} ${state.s1} ${teamNames.t2}`;
-            }
+            let scoreText = state.s1 === state.s2 ? 
+                `${state.s1} תיקו` : 
+                (state.s1 > state.s2 ? `${state.s1} ${state.s2} ${teamNames.t1}` : `${state.s2} ${state.s1} ${teamNames.t2}`);
 
             const currentServer = getCurrentServer();
             if (currentServer !== lastServer) {
-                const serverName = currentServer === 1 ? teamNames.t1 : teamNames.t2;
-                scoreText += `. הגשות ${serverName}`;
+                scoreText += `. הגשות ${currentServer === 1 ? teamNames.t1 : teamNames.t2}`;
                 lastServer = currentServer;
             }
             speak(scoreText);
@@ -271,35 +261,24 @@
 
             if (winner > 0) {
                 if (winner === 1) state.sets1++; else state.sets2++;
-                const wName = (winner === 1) ? teamNames.t1 : teamNames.t2;
-                speak(`מערכה נגמרה. ${wName} ניצח.`);
+                speak(`מערכה ל${winner === 1 ? teamNames.t1 : teamNames.t2}`);
                 setTimeout(() => {
                     state.s1 = 0; state.s2 = 0;
                     lastServer = 1;
                     updateUI();
-                }, 2000); 
+                }, 1500); 
                 return true;
             }
             return false;
         }
 
-        // זיהוי פקודות לפי מילות מפתח
         function processTranscript(text) {
-            const words = text.toLowerCase().split(/\s+/);
-            
-            // בודק התאמה למילות מפתח
             const contains = (list) => list.some(k => text.includes(k.toLowerCase()));
 
             if (contains(KEYWORDS.undo)) return triggerVoiceAction(() => undo());
             if (contains(KEYWORDS.swap)) return triggerVoiceAction(() => swapSides());
-            
-            // בדיקה לפי שמות קבוצות דינמיים או מילות מפתח קבועות
-            if (contains(KEYWORDS.p1) || text.includes(teamNames.t1.toLowerCase())) {
-                return triggerVoiceAction(() => addPoint(1));
-            }
-            if (contains(KEYWORDS.p2) || text.includes(teamNames.t2.toLowerCase())) {
-                return triggerVoiceAction(() => addPoint(2));
-            }
+            if (contains(KEYWORDS.p1)) return triggerVoiceAction(() => addPoint(1));
+            if (contains(KEYWORDS.p2)) return triggerVoiceAction(() => addPoint(2));
         }
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -307,13 +286,17 @@
             const recognition = new SpeechRecognition();
             recognition.lang = 'he-IL';
             recognition.continuous = true;
-            recognition.interimResults = true;
+            recognition.interimResults = false; // שינוי ל-false עוזר מאוד למניעת כפילויות
 
             recognition.onresult = (event) => {
-                if (isProcessing) return;
-                const transcript = event.results[event.results.length - 1][0].transcript.trim();
-                document.getElementById('status').innerText = 'שומע: ' + transcript;
-                processTranscript(transcript);
+                // המפתח כאן: אנחנו מטפלים רק בתוצאות חדשות לפי האינדקס שלהן
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        const transcript = event.results[i][0].transcript.trim().toLowerCase();
+                        document.getElementById('status').innerText = 'זיהיתי: ' + transcript;
+                        processTranscript(transcript);
+                    }
+                }
             };
 
             recognition.onend = () => { if (isListening) recognition.start(); };
@@ -324,19 +307,19 @@
                 if (isListening) { 
                     recognition.start(); 
                     document.getElementById('voice-btn').classList.add('active'); 
-                    document.getElementById('status').innerText = "מקשיב...";
                 } else { 
                     recognition.stop(); 
                     document.getElementById('voice-btn').classList.remove('active'); 
-                    document.getElementById('status').innerText = "כבוי";
                 }
             };
         }
 
         function triggerVoiceAction(action) {
+            if (isProcessing) return;
             isProcessing = true;
             action();
-            setTimeout(() => { isProcessing = false; }, 1600); 
+            // השהיה קצרה שמונעת פקודות רצופות מדי (Anti-Bounce)
+            setTimeout(() => { isProcessing = false; }, 1200); 
         }
 
         async function enableNoSleep() {
@@ -357,16 +340,16 @@
                 isSwapped = prev.isSwapped;
                 lastServer = getCurrentServer();
                 updateUI();
-                speak("ביטול");
+                speak("בטל");
             }
         }
 
         function resetGame() {
-            if(confirm("לאפס הכל?")) {
+            if(confirm("לאפס?")) {
                 state = { s1: 0, s2: 0, sets1: 0, sets2: 0 };
                 history = []; lastServer = 1;
                 updateUI();
-                speak("המשחק מתאפס");
+                speak("אופס");
             }
         }
 
