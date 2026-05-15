@@ -60,7 +60,6 @@
             justify-content: center;
             gap: 100px;
             margin-bottom: 10px;
-            transition: flex-direction 0.5s ease;
         }
         .set-box {
             display: flex;
@@ -68,11 +67,10 @@
             align-items: center;
         }
         .set-label { font-size: 0.8rem; opacity: 0.7; margin-bottom: 2px; }
-        .sets-count { font-size: 2rem; font-weight: bold; background: rgba(0,0,0,0.3); padding: 5px 20px; border-radius: 10px; }
+        .sets-count { font-size: 2rem; font-weight: bold; background: rgba(0,0,0,0.3); padding: 5px 20px; border-radius: 10px; transition: color 0.3s; }
 
         .scoreboard { 
             display: flex; gap: 15px; justify-content: center; width: 100%; 
-            transition: flex-direction 0.5s ease;
         }
         .player-card { 
             background: var(--card-bg); padding: 25px 10px; border-radius: 20px; 
@@ -82,9 +80,11 @@
         .player-card.serving { border-color: var(--accent); transform: scale(1.05); }
 
         .player-name { font-size: 1.2rem; font-weight: bold; color: #eee; outline: none; margin-bottom: 5px; border-bottom: 1px dashed #555; }
-        .score { font-size: clamp(4.5rem, 18vw, 11rem); font-weight: 900; line-height: 1; margin: 10px 0; font-family: monospace; pointer-events: none; }
-        .p1-text { color: var(--p1-color); }
-        .p2-text { color: var(--p2-color); }
+        .score { font-size: clamp(4.5rem, 18vw, 11rem); font-weight: 900; line-height: 1; margin: 10px 0; font-family: monospace; pointer-events: none; transition: color 0.3s; }
+        
+        /* מחלקות דינמיות לצבעים */
+        .color-p1 { color: var(--p1-color) !important; }
+        .color-p2 { color: var(--p2-color) !important; }
 
         .controls { margin-top: 30px; display: flex; gap: 10px; justify-content: center; width: 100%; flex-wrap: wrap; }
         .action-btn { padding: 12px; font-size: 0.9rem; font-weight: bold; border: none; border-radius: 12px; cursor: pointer; flex: 1; min-width: 100px; max-width: 150px; }
@@ -112,25 +112,26 @@
             <div class="status-msg" id="status">מוכן...</div>
         </div>
 
-        <div class="sets-header" id="sets-header">
+        <div class="sets-header">
             <div class="set-box">
-                <div class="set-label">מערכות כחול</div>
-                <div class="sets-count" id="sets-1">0</div>
+                <div class="set-label">מערכות ימין</div>
+                <div class="sets-count" id="sets-display-1">0</div>
             </div>
             <div class="set-box">
-                <div class="set-label">מערכות אדום</div>
-                <div class="sets-count" id="sets-2">0</div>
+                <div class="set-label">מערכות שמאל</div>
+                <div class="sets-display-2" id="sets-display-2">0</div>
+                <div class="sets-count" id="sets-display-2">0</div>
             </div>
         </div>
 
-        <div class="scoreboard" id="board">
-            <div class="player-card" id="card-1" onclick="handleManualPoint(1)">
-                <div class="player-name" id="name-1" contenteditable="true" onclick="event.stopPropagation()">כחול</div>
-                <div class="score p1-text" id="score-1">0</div>
+        <div class="scoreboard">
+            <div class="player-card" id="ui-card-right" onclick="handleCardClick(1)">
+                <div class="player-name" id="ui-name-right" contenteditable="true" onclick="event.stopPropagation()">כחול</div>
+                <div class="score" id="ui-score-right">0</div>
             </div>
-            <div class="player-card" id="card-2" onclick="handleManualPoint(2)">
-                <div class="player-name" id="name-2" contenteditable="true" onclick="event.stopPropagation()">אדום</div>
-                <div class="score p2-text" id="score-2">0</div>
+            <div class="player-card" id="ui-card-left" onclick="handleCardClick(2)">
+                <div class="player-name" id="ui-name-left" contenteditable="true" onclick="event.stopPropagation()">אדום</div>
+                <div class="score" id="ui-score-left">0</div>
             </div>
         </div>
 
@@ -145,12 +146,13 @@
     <canvas id="hidden-canvas" width="10" height="10"></canvas>
 
     <script>
+        // state מייצג את הקבוצות הלוגיות (1=כחול, 2=אדום)
         let state = { s1: 0, s2: 0, sets1: 0, sets2: 0 };
         let history = [];
         let isListening = false;
         let isNoSleepActive = false;
         let lastPointTime = 0;
-        let isSwapped = false;
+        let isSwapped = false; // האם כחול (1) נמצא בשמאל כרגע?
         let wakeLock = null;
         let lastServer = 1;
         let isProcessing = false;
@@ -160,78 +162,133 @@
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'he-IL';
             utterance.rate = 1.4;
-            utterance.pitch = 1.0;
             window.speechSynthesis.speak(utterance);
         }
 
         function announceScore() {
-            const name1 = document.getElementById('name-1').innerText;
-            const name2 = document.getElementById('name-2').innerText;
-            
+            const name1 = document.getElementById('ui-name-right').innerText;
+            const name2 = document.getElementById('ui-name-left').innerText;
+            // תמיד מקריא לפי קבוצה 1 ואז 2 בלי קשר לצד
             let scoreText = "";
             if (state.s1 === state.s2) {
                 scoreText = `${state.s1} ${state.s2} תיקו`;
             } else if (state.s1 > state.s2) {
-                scoreText = `${state.s1} ${state.s2} ${name1}`;
+                scoreText = `${state.s1} ${state.s2} כחול`;
             } else {
-                scoreText = `${state.s2} ${state.s1} ${name2}`;
+                scoreText = `${state.s2} ${state.s1} אדום`;
             }
 
             const currentServer = getCurrentServer();
             if (currentServer !== lastServer) {
-                const serverName = currentServer === 1 ? name1 : name2;
+                const serverName = currentServer === 1 ? "כחול" : "אדום";
                 scoreText += `. הגשות ${serverName}`;
                 lastServer = currentServer;
             }
-
             speak(scoreText);
         }
 
         function getCurrentServer() {
             const total = state.s1 + state.s2;
-            if (state.s1 >= 10 && state.s2 >= 10) {
-                return (total % 2 === 0 ? 1 : 2);
-            }
+            if (state.s1 >= 10 && state.s2 >= 10) return (total % 2 === 0 ? 1 : 2);
             return (Math.floor(total / 2) % 2 === 0 ? 1 : 2);
-        }
-
-        async function enableNoSleep() {
-            if (isNoSleepActive) return;
-            const video = document.getElementById('no-sleep-video');
-            const canvas = document.getElementById('hidden-canvas');
-            const ctx = canvas.getContext('2d');
-            
-            setInterval(() => {
-                ctx.fillStyle = `rgb(${Math.random()*255},${Math.random()*255},${Math.random()*255})`;
-                ctx.fillRect(0, 0, 10, 10);
-            }, 1000);
-
-            const stream = canvas.captureStream(10);
-            video.srcObject = stream;
-
-            try {
-                await video.play();
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                }
-                isNoSleepActive = true;
-                document.getElementById('no-sleep-btn').classList.add('active');
-                document.getElementById('no-sleep-text').innerText = "הגנת מסך פעילה";
-            } catch (e) {}
         }
 
         function swapSides() {
             isSwapped = !isSwapped;
-            const board = document.getElementById('board');
-            const setsHeader = document.getElementById('sets-header');
-            
-            // הופך את סדר התצוגה של הלוח ושל הכותרות למעלה
-            board.style.flexDirection = isSwapped ? 'row-reverse' : 'row';
-            setsHeader.style.flexDirection = isSwapped ? 'row-reverse' : 'row';
-            
+            updateUI();
             speak("החלפת צדדים");
         }
 
+        function handleCardClick(uiSide) {
+            enableNoSleep();
+            // uiSide 1 = ימין, 2 = שמאל
+            if (!isSwapped) {
+                addPoint(uiSide === 1 ? 1 : 2);
+            } else {
+                addPoint(uiSide === 1 ? 2 : 1);
+            }
+        }
+
+        function addPoint(player) {
+            const now = Date.now();
+            if (now - lastPointTime < 1500) return; 
+            lastPointTime = now;
+
+            history.push({...state});
+            if (player === 1) state.s1++; else state.s2++;
+            
+            updateUI();
+            if (!checkWin()) announceScore();
+        }
+
+        function updateUI() {
+            const scoreRight = document.getElementById('ui-score-right');
+            const scoreLeft = document.getElementById('ui-score-left');
+            const cardRight = document.getElementById('ui-card-right');
+            const cardLeft = document.getElementById('ui-card-left');
+            const setsDisplay1 = document.getElementById('sets-display-1');
+            const setsDisplay2 = document.getElementById('sets-display-2');
+
+            // אם לא הוחלף: ימין=כחול(1), שמאל=אדום(2)
+            if (!isSwapped) {
+                scoreRight.innerText = state.s1;
+                scoreLeft.innerText = state.s2;
+                setsDisplay1.innerText = state.sets1;
+                setsDisplay2.innerText = state.sets2;
+                
+                scoreRight.className = "score color-p1";
+                scoreLeft.className = "score color-p2";
+                setsDisplay1.className = "sets-count color-p1";
+                setsDisplay2.className = "sets-count color-p2";
+            } else {
+                // אם הוחלף: ימין=אדום(2), שמאל=כחול(1)
+                scoreRight.innerText = state.s2;
+                scoreLeft.innerText = state.s1;
+                setsDisplay1.innerText = state.sets2;
+                setsDisplay2.innerText = state.sets1;
+
+                scoreRight.className = "score color-p2";
+                scoreLeft.className = "score color-p1";
+                setsDisplay1.className = "sets-count color-p2";
+                setsDisplay2.className = "sets-count color-p1";
+            }
+            
+            const server = getCurrentServer();
+            if (!isSwapped) {
+                cardRight.classList.toggle('serving', server === 1);
+                cardLeft.classList.toggle('serving', server === 2);
+            } else {
+                cardRight.classList.toggle('serving', server === 2);
+                cardLeft.classList.toggle('serving', server === 1);
+            }
+        }
+
+        function checkWin() {
+            let winner = 0;
+            let isTech = false;
+            if (state.s1 >= 11 && (state.s1 - state.s2) >= 2) winner = 1;
+            else if (state.s2 >= 11 && (state.s2 - state.s1) >= 2) winner = 2;
+            else if (state.s1 === 7 && state.s2 === 0) { winner = 1; isTech = true; }
+            else if (state.s2 === 7 && state.s1 === 0) { winner = 2; isTech = true; }
+
+            if (winner > 0) {
+                if (winner === 1) state.sets1++; else state.sets2++;
+                const wName = (winner === 1) ? "כחול" : "אדום";
+                
+                if (isTech) speak(`טכני! פירקו אותם שבע אפס! ${wName} ניצח.`);
+                else speak(`מערכה נגמרה. ${wName} ניצח.`);
+                
+                setTimeout(() => {
+                    state.s1 = 0; state.s2 = 0;
+                    lastServer = 1;
+                    updateUI();
+                }, 2000); 
+                return true;
+            }
+            return false;
+        }
+
+        // --- Voice Control ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
 
@@ -243,29 +300,21 @@
 
             recognition.onresult = (event) => {
                 if (isProcessing) return;
-
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const transcript = event.results[i][0].transcript.trim().toLowerCase();
                     document.getElementById('status').innerText = 'שומע: ' + transcript;
 
-                    const name1 = document.getElementById('name-1').innerText.trim().toLowerCase();
-                    const name2 = document.getElementById('name-2').innerText.trim().toLowerCase();
-
                     if (transcript.match(/ביטול|חזור|טעות/)) {
-                        triggerVoiceAction(() => undo());
-                        break;
+                        triggerVoiceAction(() => undo()); break;
                     } 
-                    if (transcript.match(/צדדים|החלף צד/)) {
-                        triggerVoiceAction(() => swapSides());
-                        break;
+                    if (transcript.match(/צדדים|החלף צד|תחליף צד|שנה צד/)) {
+                        triggerVoiceAction(() => swapSides()); break;
                     }
-                    if (transcript.includes(name1) || transcript.match(/^כחול$|^כחו$/)) {
-                        triggerVoiceAction(() => addPoint(1));
-                        break;
+                    if (transcript.match(/כחול|כחו|חול/)) {
+                        triggerVoiceAction(() => addPoint(1)); break;
                     }
-                    if (transcript.includes(name2) || transcript.match(/^אדום$|^אדו$/)) {
-                        triggerVoiceAction(() => addPoint(2));
-                        break;
+                    if (transcript.match(/אדום|אדו|דום/)) {
+                        triggerVoiceAction(() => addPoint(2)); break;
                     }
                 }
             };
@@ -292,24 +341,20 @@
             }
         }
 
-        function handleManualPoint(p) {
-            enableNoSleep();
-            addPoint(p);
-        }
-
-        function addPoint(player) {
-            const now = Date.now();
-            if (now - lastPointTime < 1500) return; 
-            lastPointTime = now;
-
-            history.push({...state});
-            if (player === 1) state.s1++; else state.s2++;
-            
-            updateUI();
-            
-            if (!checkWin()) {
-                announceScore();
-            }
+        async function enableNoSleep() {
+            if (isNoSleepActive) return;
+            const video = document.getElementById('no-sleep-video');
+            const canvas = document.getElementById('hidden-canvas');
+            const ctx = canvas.getContext('2d');
+            setInterval(() => { ctx.fillRect(0,0,1,1); }, 1000);
+            const stream = canvas.captureStream(1);
+            video.srcObject = stream;
+            try {
+                await video.play();
+                if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+                isNoSleepActive = true;
+                document.getElementById('no-sleep-btn').classList.add('active');
+            } catch (e) {}
         }
 
         function undo() {
@@ -320,51 +365,6 @@
                 speak("ביטול");
                 setTimeout(announceScore, 600);
             }
-        }
-
-        function updateUI() {
-            document.getElementById('score-1').innerText = state.s1;
-            document.getElementById('score-2').innerText = state.s2;
-            document.getElementById('sets-1').innerText = state.sets1;
-            document.getElementById('sets-2').innerText = state.sets2;
-            
-            const server = getCurrentServer();
-            document.getElementById('card-1').classList.toggle('serving', server === 1);
-            document.getElementById('card-2').classList.toggle('serving', server === 2);
-        }
-
-        function checkWin() {
-            let winner = 0;
-            let isTechnical = false;
-            const n1 = document.getElementById('name-1').innerText;
-            const n2 = document.getElementById('name-2').innerText;
-
-            // בדיקת ניצחון רגיל
-            if (state.s1 >= 11 && (state.s1 - state.s2) >= 2) winner = 1;
-            else if (state.s2 >= 11 && (state.s2 - state.s1) >= 2) winner = 2;
-            
-            // בדיקת ניצחון טכני (7-0)
-            if (state.s1 === 7 && state.s2 === 0) { winner = 1; isTechnical = true; }
-            else if (state.s2 === 7 && state.s1 === 0) { winner = 2; isTechnical = true; }
-
-            if (winner > 0) {
-                const winnerName = winner === 1 ? n1 : n2;
-                if (winner === 1) state.sets1++; else state.sets2++;
-                
-                if (isTechnical) {
-                    speak(`טכני! פירקו אותך שבע אפס! ${winnerName} ניצח.`);
-                } else {
-                    speak(`מערכה נגמרה. ${winnerName} ניצח.`);
-                }
-                
-                setTimeout(() => {
-                    state.s1 = 0; state.s2 = 0;
-                    lastServer = 1;
-                    updateUI();
-                }, 2000); 
-                return true;
-            }
-            return false;
         }
 
         function resetGame() {
