@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ping Pong Pro - No Sleep</title>
+    <title>Ping Pong Pro - Fast Voice</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -23,13 +23,12 @@
             justify-content: center;
             min-height: 100vh;
             margin: 0;
-            overflow-x: hidden;
+            overflow: hidden;
             touch-action: manipulation;
         }
 
         .container { text-align: center; width: 100%; max-width: 900px; padding: 10px; box-sizing: border-box; }
 
-        /* כפתור למניעת שינה */
         .no-sleep-banner {
             background: #333;
             padding: 8px 15px;
@@ -41,6 +40,7 @@
             gap: 8px;
             cursor: pointer;
             border: 1px solid #444;
+            transition: 0.3s;
         }
         .no-sleep-banner.active { border-color: var(--accent); color: var(--accent); }
 
@@ -68,22 +68,26 @@
             100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
         }
 
-        .scoreboard { display: flex; gap: 15px; justify-content: center; width: 100%; }
-        .player-card { background: var(--card-bg); padding: 25px 10px; border-radius: 20px; flex: 1; max-width: 280px; border: 4px solid transparent; cursor: pointer; display: flex; flex-direction: column; }
-        .player-card.serving { border-color: var(--accent); }
+        .game-mode-toggle { margin-bottom: 15px; background: #333; padding: 5px; border-radius: 15px; display: inline-flex; }
+        .mode-btn { padding: 8px 12px; border-radius: 10px; cursor: pointer; border: none; background: transparent; color: #888; font-weight: bold; font-size: 0.8rem; }
+        .mode-btn.active { background: var(--accent); color: black; }
 
-        .player-name { font-size: 1.2rem; font-weight: bold; color: #eee; outline: none; margin-bottom: 5px; }
-        .score { font-size: clamp(4.5rem, 18vw, 11rem); font-weight: 900; line-height: 1; margin: 10px 0; font-family: monospace; }
+        .scoreboard { display: flex; gap: 15px; justify-content: center; width: 100%; }
+        .player-card { background: var(--card-bg); padding: 25px 10px; border-radius: 20px; flex: 1; max-width: 280px; border: 4px solid transparent; cursor: pointer; display: flex; flex-direction: column; transition: 0.2s; }
+        .player-card.serving { border-color: var(--accent); transform: scale(1.02); }
+
+        .player-name { font-size: 1.2rem; font-weight: bold; color: #eee; outline: none; margin-bottom: 5px; border-bottom: 1px dashed #555; }
+        .score { font-size: clamp(4.5rem, 18vw, 11rem); font-weight: 900; line-height: 1; margin: 10px 0; font-family: monospace; pointer-events: none; }
         #score-1 { color: var(--p1-color); }
         #score-2 { color: var(--p2-color); }
-        .sets-count { font-size: 1.5rem; background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 10px; align-self: center; }
+        .sets-count { font-size: 1.5rem; background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 10px; align-self: center; pointer-events: none; }
 
         .controls { margin-top: 30px; display: flex; gap: 10px; justify-content: center; width: 100%; }
         .action-btn { padding: 15px; font-size: 1rem; font-weight: bold; border: none; border-radius: 12px; cursor: pointer; flex: 1; max-width: 150px; }
         .btn-undo { background: #444; color: white; }
         .btn-reset { background: #c0392b; color: white; }
 
-        .status-msg { margin-top: 10px; font-size: 0.8rem; color: #888; min-height: 1.2rem; }
+        .status-msg { margin-top: 10px; font-size: 0.85rem; color: #2ecc71; font-weight: bold; min-height: 1.2rem; }
     </style>
 </head>
 <body>
@@ -91,7 +95,7 @@
     <div class="container">
         <div id="no-sleep-btn" class="no-sleep-banner" onclick="enableNoSleep()">
             <span id="no-sleep-icon">⭕</span>
-            <span id="no-sleep-text">לחץ כאן כדי שהמסך לא יכבה</span>
+            <span id="no-sleep-text">לחץ למניעת כיבוי מסך</span>
         </div>
 
         <div class="voice-controls">
@@ -99,16 +103,21 @@
                 <span id="voice-icon">🎤</span>
                 <span id="voice-text">הפעל שליטה קולית</span>
             </button>
-            <div class="status-msg" id="status">תגידו "כחול", "אדום" או "ביטול"</div>
+            <div class="status-msg" id="status">מוכן לשמוע...</div>
+        </div>
+
+        <div class="game-mode-toggle">
+            <button id="mode-normal" class="mode-btn active" onclick="setMode('normal')">רגיל (11)</button>
+            <button id="mode-short" class="mode-btn" onclick="setMode('short')">קצר (5)</button>
         </div>
 
         <div class="scoreboard">
-            <div class="player-card" id="card-1" onclick="handleCardClick(1)">
+            <div class="player-card" id="card-1" onclick="handleManualPoint(1)">
                 <div class="player-name" contenteditable="true" onclick="event.stopPropagation()">כחול</div>
                 <div class="score" id="score-1">0</div>
                 <div class="sets-count" id="sets-1">0</div>
             </div>
-            <div class="player-card" id="card-2" onclick="handleCardClick(2)">
+            <div class="player-card" id="card-2" onclick="handleManualPoint(2)">
                 <div class="player-name" contenteditable="true" onclick="event.stopPropagation()">אדום</div>
                 <div class="score" id="score-2">0</div>
                 <div class="sets-count" id="sets-2">0</div>
@@ -126,40 +135,31 @@
     <script>
         let state = { s1: 0, s2: 0, sets1: 0, sets2: 0 };
         let history = [];
+        let gameMode = 'normal';
         let isListening = false;
         let isNoSleepActive = false;
 
-        // --- פונקציית מניעת שינה (וידאו + WakeLock) ---
+        // --- מניעת כיבוי מסך ---
         async function enableNoSleep() {
             if (isNoSleepActive) return;
-
-            // 1. נסיון ל-Wake Lock API
-            if ('wakeLock' in navigator) {
-                try {
-                    await navigator.wakeLock.request('screen');
-                } catch (e) {}
-            }
-
-            // 2. הפעלת וידאו נסתר (עובד מעולה ב-iOS ו-Android)
             const video = document.getElementById('no-sleep-video');
-            // יצירת וידאו ריק קטנטן ב-Base64
             video.src = "data:video/mp4;base64,AAAAHGZ0eXBtcDQyAAAAAG1wNDJpc29tYXZjMQAAAZptb292AAAAbG12aGQAAAAA389v6N/Pb+gAAAPoAAAAKAABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAGWlvZHMAAAAAEAAf/yADAAABAAAAAAAZdHJhawAAAFx0a2hkAAAAAd/Pb+jfz2/oAAAAAQAAAAAAAAPoAAAAAAAAAAAAAAAAAQAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAW1kaWEAAAAgbWRoZAAAAADfz2/o389v6AAA6GAAAAABAAAAAAAAAC1oZGxyAAAAAAAAAAB2aWRlAAAAAAAAAAAAAAAAVmlkZW9IYW5kbGVyAAAAAVxtaW5mAAAAEHZtZGhkAAAAAQAAAAAAAAA0ZGluZgAAABxkcmVmAAAAAAAAAAEAAAAMdXJsIAAAAAEAAAFSbXN0YmwAAABidmN3MAAAAABBVU8AAAAAAAAA6GAAAAAA";
-            
-            video.play().then(() => {
+            try {
+                await video.play();
+                if ('wakeLock' in navigator) await navigator.wakeLock.request('screen');
                 isNoSleepActive = true;
-                const btn = document.getElementById('no-sleep-btn');
-                btn.classList.add('active');
+                document.getElementById('no-sleep-btn').classList.add('active');
                 document.getElementById('no-sleep-icon').innerText = "✔️";
                 document.getElementById('no-sleep-text').innerText = "הגנת מסך פעילה";
-            }).catch(e => console.log("Video failed", e));
+            } catch (e) {}
         }
 
-        function handleCardClick(p) {
-            enableNoSleep(); // מפעיל הגנה בלחיצה ראשונה
+        function handleManualPoint(p) {
+            enableNoSleep();
             addPoint(p);
         }
 
-        // --- זיהוי קולי ---
+        // --- זיהוי קולי מהיר ---
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition;
 
@@ -167,17 +167,32 @@
             recognition = new SpeechRecognition();
             recognition.lang = 'he-IL';
             recognition.continuous = true;
+            recognition.interimResults = true; // זיהוי תוך כדי דיבור
 
             recognition.onresult = (event) => {
-                const transcript = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-                document.getElementById('status').innerText = 'שמעתי: "' + transcript + '"';
-                
-                const name1 = document.querySelectorAll('.player-name')[0].innerText.trim().toLowerCase();
-                const name2 = document.querySelectorAll('.player-name')[1].innerText.trim().toLowerCase();
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const transcript = event.results[i][0].transcript.trim().toLowerCase();
+                    document.getElementById('status').innerText = 'שמעתי: ' + transcript;
 
-                if (transcript.includes('ביטול') || transcript.includes('טעות')) undo();
-                else if (transcript.includes(name1) || transcript.includes('כחול')) addPoint(1);
-                else if (transcript.includes(name2) || transcript.includes('אדום')) addPoint(2);
+                    const name1 = document.querySelectorAll('.player-name')[0].innerText.trim().toLowerCase();
+                    const name2 = document.querySelectorAll('.player-name')[1].innerText.trim().toLowerCase();
+
+                    if (transcript.includes('ביטול') || transcript.includes('טעות')) {
+                        undo();
+                        recognition.stop(); 
+                        break;
+                    } 
+                    if (transcript.includes(name1) || transcript.includes('כחול')) {
+                        addPoint(1);
+                        recognition.stop();
+                        break;
+                    } 
+                    if (transcript.includes(name2) || transcript.includes('אדום')) {
+                        addPoint(2);
+                        recognition.stop();
+                        break;
+                    }
+                }
             };
             recognition.onend = () => { if (isListening) recognition.start(); };
         }
@@ -191,8 +206,8 @@
                 document.getElementById('voice-btn').classList.add('active');
                 document.getElementById('voice-text').innerText = "מקשיב...";
             } else {
-                recognition.stop();
                 isListening = false;
+                recognition.stop();
                 document.getElementById('voice-btn').classList.remove('active');
                 document.getElementById('voice-text').innerText = "הפעל שליטה קולית";
             }
@@ -209,6 +224,7 @@
             if (history.length > 0) {
                 state = history.pop();
                 updateUI();
+                document.getElementById('status').innerText = "בוצע ביטול";
             }
         }
 
@@ -219,26 +235,46 @@
             document.getElementById('sets-2').innerText = state.sets2;
             
             const total = state.s1 + state.s2;
-            let server = (state.s1 >= 10 && state.s2 >= 10) ? (total % 2 === 0 ? 1 : 2) : (Math.floor(total / 2) % 2 === 0 ? 1 : 2);
+            const target = gameMode === 'short' ? 4 : 10;
+            let server = (state.s1 >= target && state.s2 >= target) ? (total % 2 === 0 ? 1 : 2) : (Math.floor(total / 2) % 2 === 0 ? 1 : 2);
             document.getElementById('card-1').classList.toggle('serving', server === 1);
             document.getElementById('card-2').classList.toggle('serving', server === 2);
         }
 
         function checkWin() {
-            let win = (state.s1 >= 11 || state.s2 >= 11) && Math.abs(state.s1 - state.s2) >= 2;
-            // ניצחון טכני 7-0
-            if ((state.s1 === 7 && state.s2 === 0) || (state.s2 === 7 && state.s1 === 0)) win = true;
+            let target = gameMode === 'short' ? 5 : 11;
+            let winner = 0;
+            
+            // טכני ב-7:0 רק במצב רגיל
+            if (gameMode === 'normal') {
+                if (state.s1 === 7 && state.s2 === 0) winner = 1;
+                else if (state.s2 === 7 && state.s1 === 0) winner = 2;
+            }
 
-            if (win) {
-                if (state.s1 > state.s2) state.sets1++; else state.sets2++;
-                alert("המערכה נגמרה!");
-                state.s1 = 0; state.s2 = 0;
-                updateUI();
+            if (winner === 0) {
+                if (state.s1 >= target && (state.s1 - state.s2) >= 2) winner = 1;
+                else if (state.s2 >= target && (state.s2 - state.s1) >= 2) winner = 2;
+            }
+
+            if (winner > 0) {
+                if (winner === 1) state.sets1++; else state.sets2++;
+                setTimeout(() => {
+                    alert("המערכה נגמרה!");
+                    state.s1 = 0; state.s2 = 0;
+                    updateUI();
+                }, 50);
             }
         }
 
-        function resetGame() {
-            if(confirm("לאפס?")) {
+        function setMode(mode) { 
+            gameMode = mode; 
+            document.getElementById('mode-normal').classList.toggle('active', mode === 'normal');
+            document.getElementById('mode-short').classList.toggle('active', mode === 'short');
+            resetGame(false); 
+        }
+
+        function resetGame(ask = true) {
+            if(!ask || confirm("לאפס את הניקוד?")) {
                 state = { s1: 0, s2: 0, sets1: 0, sets2: 0 };
                 history = [];
                 updateUI();
