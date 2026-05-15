@@ -237,31 +237,35 @@
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const transcript = event.results[i][0].transcript.trim().toLowerCase();
                     
-                    // אם זה רק תוצאת ביניים, נציג בסטטוס אבל לא נבצע
                     if (!event.results[i].isFinal) {
                         document.getElementById('status').innerText = 'מזהה: ' + transcript;
                         continue;
                     }
 
-                    // --- לוגיקת סינון רעשים ---
-                    // אם המשפט ארוך מדי (מעל 3 מילים), רוב הסיכויים שזה דיבור רקע ולא פקודה
-                    if (transcript.split(' ').length > 4) {
-                        document.getElementById('status').innerText = 'התעלמתי מרעש רקע';
+                    // סינון רעשים: אם נאמר משפט ארוך מאוד (מעל 5 מילים), נתעלם
+                    if (transcript.split(' ').length > 5) {
+                        document.getElementById('status').innerText = 'דיבור ארוך מדי - התעלמתי';
                         continue;
                     }
-
-                    document.getElementById('status').innerText = 'בוצע: ' + transcript;
-
-                    // פקודות ניווט (חיפוש מילה ספציפית בלבד)
-                    if (transcript.match(/^(החלף צד|צדדים|תחליף צד)$/)) { swapSides(); recognition.stop(); break; }
-                    if (transcript.match(/^(ביטול|חזור|טעות)$/)) { undo(); recognition.stop(); break; } 
 
                     const name1 = document.getElementById('name-1').innerText.trim().toLowerCase();
                     const name2 = document.getElementById('name-2').innerText.trim().toLowerCase();
 
-                    // זיהוי נקודה - בודק אם המילה היא בדיוק השם או הצבע
-                    if (transcript === name1 || transcript === 'כחול' || transcript === 'נקודה לכחול') { addPoint(1); recognition.stop(); break; } 
-                    if (transcript === name2 || transcript === 'אדום' || transcript === 'נקודה לאדום') { addPoint(2); recognition.stop(); break; }
+                    // ביצוע פעולות - שימוש ב-includes כדי להיות סלחני יותר לרווחים/תוספות
+                    if (transcript.includes("ביטול") || transcript.includes("חזור") || transcript.includes("טעות")) {
+                        undo();
+                    } 
+                    else if (transcript.includes("צדדים") || transcript.includes("החלף צד")) {
+                        swapSides();
+                    }
+                    else if (transcript === name1 || transcript.includes("נקודה לכחול") || (transcript === "כחול" && name1 === "כחול")) {
+                        addPoint(1);
+                    }
+                    else if (transcript === name2 || transcript.includes("נקודה לאדום") || (transcript === "אדום" && name2 === "אדום")) {
+                        addPoint(2);
+                    }
+
+                    document.getElementById('status').innerText = 'בוצע: ' + transcript;
                 }
             };
             recognition.onend = () => { if (isListening) recognition.start(); };
@@ -287,7 +291,7 @@
 
         function addPoint(player) {
             const now = Date.now();
-            if (now - lastPointTime < 1000) return;
+            if (now - lastPointTime < 1200) return; // מניעת כפילויות מהירה
             lastPointTime = now;
 
             history.push({...state});
