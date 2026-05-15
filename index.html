@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ping Pong Pro - Ultra Stable</title>
+    <title>Ping Pong Pro - Always On</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -68,7 +68,7 @@
         }
 
         .scoreboard { display: flex; gap: 15px; justify-content: center; width: 100%; }
-        .player-card { background: var(--card-bg); padding: 25px 10px; border-radius: 20px; flex: 1; max-width: 280px; border: 4px solid transparent; cursor: pointer; display: flex; flex-direction: column; transition: 0.2s; }
+        .player-card { background: var(--card-bg); padding: 25px 10px; border-radius: 20px; flex: 1; max-width: 280px; border: 4px solid transparent; cursor: pointer; display: flex; flex-direction: column; transition: 0.2s; position: relative;}
         .player-card.serving { border-color: var(--accent); transform: scale(1.02); }
 
         .player-name { font-size: 1.2rem; font-weight: bold; color: #eee; outline: none; margin-bottom: 5px; border-bottom: 1px dashed #555; }
@@ -83,14 +83,17 @@
         .btn-reset { background: #c0392b; color: white; }
 
         .status-msg { margin-top: 10px; font-size: 0.85rem; color: #2ecc71; font-weight: bold; min-height: 1.2rem; }
+        
+        /* אלמנט נסתר להחזקת הקנבס */
+        #hidden-canvas { display: none; }
     </style>
 </head>
-<body>
+<body onclick="enableNoSleep()">
 
     <div class="container">
-        <div id="no-sleep-btn" class="no-sleep-banner" onclick="enableNoSleep()">
+        <div id="no-sleep-btn" class="no-sleep-banner">
             <span id="no-sleep-icon">⭕</span>
-            <span id="no-sleep-text">לחץ למניעת כיבוי מסך</span>
+            <span id="no-sleep-text">המסך יכבה (לחץ להפעלה)</span>
         </div>
 
         <div class="voice-controls">
@@ -98,7 +101,7 @@
                 <span id="voice-icon">🎤</span>
                 <span id="voice-text">הפעל שליטה קולית</span>
             </button>
-            <div class="status-msg" id="status">מוכן לשמוע...</div>
+            <div class="status-msg" id="status">מוכן...</div>
         </div>
 
         <div class="scoreboard">
@@ -121,27 +124,67 @@
     </div>
 
     <video id="no-sleep-video" playsinline muted loop style="display:none;"></video>
+    <canvas id="hidden-canvas" width="10" height="10"></canvas>
 
     <script>
         let state = { s1: 0, s2: 0, sets1: 0, sets2: 0 };
         let history = [];
         let isListening = false;
         let isNoSleepActive = false;
-        let lastPointTime = 0; // זמן הוספת הנקודה האחרונה
+        let lastPointTime = 0;
+        let wakeLock = null;
 
+        // --- פונקציית מניעת שינה משופרת ---
         async function enableNoSleep() {
-            if (isNoSleepActive) return;
+            if (isNoSleepActive) {
+                // אם כבר פעיל, רק ננסה לחדש את ה-WakeLock אם הוא אבד
+                requestWakeLock();
+                return;
+            }
+
             const video = document.getElementById('no-sleep-video');
-            video.src = "data:video/mp4;base64,AAAAHGZ0eXBtcDQyAAAAAG1wNDJpc29tYXZjMQAAAZptb292AAAAbG12aGQAAAAA389v6N/Pb+gAAAPoAAAAKAABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAGWlvZHMAAAAAEAAf/yADAAABAAAAAAAZdHJhawAAAFx0a2hkAAAAAd/Pb+jfz2/oAAAAAQAAAAAAAAPoAAAAAAAAAAAAAAAAAQAAAAABAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAW1kaWEAAAAgbWRoZAAAAADfz2/o389v6AAA6GAAAAABAAAAAAAAAC1oZGxyAAAAAAAAAAB2aWRlAAAAAAAAAAAAAAAAVmlkZW9IYW5kbGVyAAAAAVxtaW5mAAAAEHZtZGhkAAAAAQAAAAAAAAA0ZGluZgAAABxkcmVmAAAAAAAAAAEAAAAMdXJsIAAAAAEAAAFSbXN0YmwAAABidmN3MAAAAABBVU8AAAAAAAAA6GAAAAAA";
+            const canvas = document.getElementById('hidden-canvas');
+            const ctx = canvas.getContext('2d');
+
+            // יצירת זרם וידאו "חי" מקנבס (זה משכנע את הדפדפן שהמסך פעיל)
+            setInterval(() => {
+                ctx.fillStyle = `rgb(${Math.random()*255},${Math.random()*255},${Math.random()*255})`;
+                ctx.fillRect(0, 0, 10, 10);
+            }, 1000);
+
+            const stream = canvas.captureStream(10);
+            video.srcObject = stream;
+
             try {
                 await video.play();
-                if ('wakeLock' in navigator) await navigator.wakeLock.request('screen');
+                await requestWakeLock();
+                
                 isNoSleepActive = true;
                 document.getElementById('no-sleep-btn').classList.add('active');
                 document.getElementById('no-sleep-icon').innerText = "✔️";
-                document.getElementById('no-sleep-text').innerText = "הגנת מסך פעילה";
-            } catch (e) {}
+                document.getElementById('no-sleep-text').innerText = "הגנת מסך פעילה (תמיד דולק)";
+            } catch (e) {
+                console.log("NoSleep error:", e);
+            }
         }
+
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock was released');
+                    });
+                } catch (err) {}
+            }
+        }
+
+        // ניסיון חידוש נעילה כשחוזרים לטאב
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        });
 
         function handleManualPoint(p) {
             enableNoSleep();
@@ -203,7 +246,6 @@
 
         function addPoint(player) {
             const now = Date.now();
-            // חסימה: אם עברה פחות מ-1000 מילי-שניות (שנייה אחת) מהנקודה האחרונה - אל תעשה כלום
             if (now - lastPointTime < 1000) return;
             
             lastPointTime = now;
@@ -215,7 +257,7 @@
 
         function undo() {
             const now = Date.now();
-            if (now - lastPointTime < 500) return; // הגנה קלה גם על הביטול
+            if (now - lastPointTime < 500) return;
             lastPointTime = now;
 
             if (history.length > 0) {
