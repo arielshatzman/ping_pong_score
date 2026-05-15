@@ -237,35 +237,32 @@
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const transcript = event.results[i][0].transcript.trim().toLowerCase();
                     
-                    if (!event.results[i].isFinal) {
-                        document.getElementById('status').innerText = 'מזהה: ' + transcript;
-                        continue;
-                    }
+                    document.getElementById('status').innerText = 'שומע: ' + transcript;
 
-                    // סינון רעשים: אם נאמר משפט ארוך מאוד (מעל 5 מילים), נתעלם
-                    if (transcript.split(' ').length > 5) {
-                        document.getElementById('status').innerText = 'דיבור ארוך מדי - התעלמתי';
+                    if (!event.results[i].isFinal) continue;
+
+                    // סינון רעשים: משפטים ארוכים מדי (מעל 6 מילים) כנראה לא פקודה
+                    if (transcript.split(' ').length > 6) {
+                        document.getElementById('status').innerText = 'רעש רקע דלג';
                         continue;
                     }
 
                     const name1 = document.getElementById('name-1').innerText.trim().toLowerCase();
                     const name2 = document.getElementById('name-2').innerText.trim().toLowerCase();
 
-                    // ביצוע פעולות - שימוש ב-includes כדי להיות סלחני יותר לרווחים/תוספות
-                    if (transcript.includes("ביטול") || transcript.includes("חזור") || transcript.includes("טעות")) {
+                    // לוגיקת זיהוי גמישה
+                    if (transcript.match(/ביטול|חזור|טעות|אחורה/)) {
                         undo();
                     } 
-                    else if (transcript.includes("צדדים") || transcript.includes("החלף צד")) {
+                    else if (transcript.match(/צדדים|החלף צד|תחליף צד/)) {
                         swapSides();
                     }
-                    else if (transcript === name1 || transcript.includes("נקודה לכחול") || (transcript === "כחול" && name1 === "כחול")) {
+                    else if (transcript.includes(name1) || transcript.match(/כחול|כחו|חול/)) {
                         addPoint(1);
                     }
-                    else if (transcript === name2 || transcript.includes("נקודה לאדום") || (transcript === "אדום" && name2 === "אדום")) {
+                    else if (transcript.includes(name2) || transcript.match(/אדום|אדו|דום/)) {
                         addPoint(2);
                     }
-
-                    document.getElementById('status').innerText = 'בוצע: ' + transcript;
                 }
             };
             recognition.onend = () => { if (isListening) recognition.start(); };
@@ -291,7 +288,7 @@
 
         function addPoint(player) {
             const now = Date.now();
-            if (now - lastPointTime < 1200) return; // מניעת כפילויות מהירה
+            if (now - lastPointTime < 1500) return; // מניעת כפילויות בגלל הד
             lastPointTime = now;
 
             history.push({...state});
