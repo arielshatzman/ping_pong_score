@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ping Pong Pro - Voice Elite</title>
+    <title>Ping Pong Pro - Voice Elite Speed</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -152,12 +152,14 @@
         let isSwapped = false;
         let wakeLock = null;
         let lastServer = 1;
+        let isProcessing = false; // מניעת כפילויות בזיהוי קולי
 
         function speak(text) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'he-IL';
-            utterance.rate = 1.1;
+            utterance.rate = 1.4; // הקראה מהירה
+            utterance.pitch = 1.0;
             window.speechSynthesis.speak(utterance);
         }
 
@@ -231,41 +233,46 @@
             recognition = new SpeechRecognition();
             recognition.lang = 'he-IL';
             recognition.continuous = true;
-            recognition.interimResults = true;
+            recognition.interimResults = true; // תגובה בזמן אמת
 
             recognition.onresult = (event) => {
+                if (isProcessing) return; // הגנה מהפעלה כפולה
+
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     const transcript = event.results[i][0].transcript.trim().toLowerCase();
-                    
                     document.getElementById('status').innerText = 'שומע: ' + transcript;
-
-                    if (!event.results[i].isFinal) continue;
-
-                    // סינון רעשים: משפטים ארוכים מדי (מעל 6 מילים) כנראה לא פקודה
-                    if (transcript.split(' ').length > 6) {
-                        document.getElementById('status').innerText = 'רעש רקע דלג';
-                        continue;
-                    }
 
                     const name1 = document.getElementById('name-1').innerText.trim().toLowerCase();
                     const name2 = document.getElementById('name-2').innerText.trim().toLowerCase();
 
-                    // לוגיקת זיהוי גמישה
-                    if (transcript.match(/ביטול|חזור|טעות|אחורה/)) {
-                        undo();
+                    // זיהוי מיידי
+                    if (transcript.match(/ביטול|חזור|טעות/)) {
+                        triggerVoiceAction(() => undo());
+                        break;
                     } 
-                    else if (transcript.match(/צדדים|החלף צד|תחליף צד/)) {
-                        swapSides();
+                    if (transcript.match(/צדדים|החלף צד/)) {
+                        triggerVoiceAction(() => swapSides());
+                        break;
                     }
-                    else if (transcript.includes(name1) || transcript.match(/כחול|כחו|חול/)) {
-                        addPoint(1);
+                    if (transcript.includes(name1) || transcript.match(/^כחול$|^כחו$/)) {
+                        triggerVoiceAction(() => addPoint(1));
+                        break;
                     }
-                    else if (transcript.includes(name2) || transcript.match(/אדום|אדו|דום/)) {
-                        addPoint(2);
+                    if (transcript.includes(name2) || transcript.match(/^אדום$|^אדו$/)) {
+                        triggerVoiceAction(() => addPoint(2));
+                        break;
                     }
                 }
             };
             recognition.onend = () => { if (isListening) recognition.start(); };
+        }
+
+        // פונקציית עזר לביצוע פעולה קולית מהירה ועצירת הזיהוי למניעת הדהוד
+        function triggerVoiceAction(action) {
+            isProcessing = true;
+            action();
+            recognition.stop();
+            setTimeout(() => { isProcessing = false; }, 1600); 
         }
 
         function toggleVoice() {
@@ -288,7 +295,7 @@
 
         function addPoint(player) {
             const now = Date.now();
-            if (now - lastPointTime < 1500) return; // מניעת כפילויות בגלל הד
+            if (now - lastPointTime < 1500) return; 
             lastPointTime = now;
 
             history.push({...state});
