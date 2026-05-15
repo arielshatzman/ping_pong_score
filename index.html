@@ -278,7 +278,7 @@
                 if (winner === 1) state.sets1++; else state.sets2++;
                 const wName = (winner === 1) ? teamNames.t1 : teamNames.t2;
                 
-                if (isTech) speak(`טכני! פירקו אותם שבע אפס! ${wName} ניצח.`);
+                if (isTech) speak(`טכני! פירקו אותך שבע אפס! ${wName} ניצח.`);
                 else speak(`מערכה נגמרה. ${wName} ניצח.`);
                 
                 setTimeout(() => {
