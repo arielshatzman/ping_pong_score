@@ -129,6 +129,7 @@
         let lastPointTime = 0;
         let isSwapped = false;
         let wakeLock = null;
+        let lastServer = 1; // מעקב אחרי המגיש הקודם
 
         // --- הקראת קול ---
         function speak(text) {
@@ -144,13 +145,34 @@
             const name1 = document.getElementById('name-1').innerText;
             const name2 = document.getElementById('name-2').innerText;
             
+            let scoreText = "";
             if (state.s1 === state.s2) {
-                speak(`${state.s1} ${state.s2} תיקו`);
+                scoreText = `${state.s1} ${state.s2} תיקו`;
             } else if (state.s1 > state.s2) {
-                speak(`${state.s1} ${state.s2} ${name1}`);
+                scoreText = `${state.s1} ${state.s2} ${name1}`;
             } else {
-                speak(`${state.s2} ${state.s1} ${name2}`);
+                scoreText = `${state.s2} ${state.s1} ${name2}`;
             }
+
+            // בדיקה אם המגיש התחלף
+            const currentServer = getCurrentServer();
+            if (currentServer !== lastServer) {
+                const serverName = currentServer === 1 ? name1 : name2;
+                scoreText += `. הגשות ${serverName}`;
+                lastServer = currentServer;
+            }
+
+            speak(scoreText);
+        }
+
+        function getCurrentServer() {
+            const total = state.s1 + state.s2;
+            // אם הגענו ל-10-10, מגישים כל פעם אחד
+            if (state.s1 >= 10 && state.s2 >= 10) {
+                return (total % 2 === 0 ? 1 : 2);
+            }
+            // בדרך כלל מגישים כל 2 נקודות
+            return (Math.floor(total / 2) % 2 === 0 ? 1 : 2);
         }
 
         // --- מניעת שינה משופרת ---
@@ -228,7 +250,7 @@
                     const name1 = document.getElementById('name-1').innerText.trim().toLowerCase();
                     const name2 = document.getElementById('name-2').innerText.trim().toLowerCase();
 
-                    if (transcript.includes(name1) || transcript.match(/(כחול|חול|כחו|כח)/)) { addPoint(1); recognition.stop(); break; } 
+                    if (transcript.includes(name1) || transcript.match(/(כחול|נכון|חול|כחו|כח)/)) { addPoint(1); recognition.stop(); break; } 
                     if (transcript.includes(name2) || transcript.match(/(אדום|דום|אדו|אד)/)) { addPoint(2); recognition.stop(); break; }
                 }
             };
@@ -272,6 +294,7 @@
         function undo() {
             if (history.length > 0) {
                 state = history.pop();
+                lastServer = getCurrentServer(); // עדכון המגיש חזרה לאחור
                 updateUI();
                 speak("ביטול");
                 setTimeout(announceScore, 600);
@@ -284,8 +307,7 @@
             document.getElementById('sets-1').innerText = state.sets1;
             document.getElementById('sets-2').innerText = state.sets2;
             
-            const total = state.s1 + state.s2;
-            let server = (state.s1 >= 10 && state.s2 >= 10) ? (total % 2 === 0 ? 1 : 2) : (Math.floor(total / 2) % 2 === 0 ? 1 : 2);
+            const server = getCurrentServer();
             document.getElementById('card-1').classList.toggle('serving', server === 1);
             document.getElementById('card-2').classList.toggle('serving', server === 2);
         }
@@ -309,6 +331,7 @@
                 setTimeout(() => {
                     alert(`המערכה נגמרה! המנצח: ${winnerName}`);
                     state.s1 = 0; state.s2 = 0;
+                    lastServer = 1; // איפוס המגיש לתחילת מערכה
                     updateUI();
                 }, 100);
                 return true;
@@ -320,6 +343,7 @@
             if(confirm("לאפס את הניקוד?")) {
                 state = { s1: 0, s2: 0, sets1: 0, sets2: 0 };
                 history = [];
+                lastServer = 1;
                 updateUI();
                 speak("המשחק מתאפס");
             }
