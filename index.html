@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ping Pong Pro - Voice Keywords</title>
+    <title>Ping Pong Pro - Voice Elite Speed</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -144,23 +144,16 @@
     <canvas id="hidden-canvas" width="10" height="10"></canvas>
 
     <script>
+        // שמות הקבוצות נשמרים במשתנים כדי שנוכל להחליף אותם ב-UI
         let teamNames = { t1: "כחול", t2: "אדום" };
         let state = { s1: 0, s2: 0, sets1: 0, sets2: 0 };
         let history = [];
         let isListening = false;
         let isNoSleepActive = false;
         let lastPointTime = 0;
-        let isSwapped = false; 
+        let isSwapped = false; // false: כחול בימין, אדום בשמאל. true: ההפך.
         let isProcessing = false;
         let lastServer = 1;
-
-        // מילות מפתח לזיהוי מהיר ומדויק
-        const KEYWORDS = {
-            undo: ["ביטול", "חזור", "טעות", "בטל", "אנדו"],
-            swap: ["צדדים", "החלף", "תחליף", "שנה צד", "החלפה"],
-            p1: ["כחול", "כחו", "חול", "בלו"],
-            p2: ["אדום", "אדו", "דום", "רד"]
-        };
 
         function speak(text) {
             window.speechSynthesis.cancel();
@@ -178,6 +171,7 @@
 
         function handleCardClick(side) {
             enableNoSleep();
+            // אם isSwapped = false, ימין זה קבוצה 1. אם true, ימין זה קבוצה 2.
             if (side === 'right') {
                 addPoint(!isSwapped ? 1 : 2);
             } else {
@@ -198,6 +192,7 @@
         }
 
         function updateUI() {
+            // אלמנטים
             const nameRight = document.getElementById('ui-name-right');
             const nameLeft = document.getElementById('ui-name-left');
             const scoreRight = document.getElementById('ui-score-right');
@@ -208,25 +203,34 @@
             const cardLeft = document.getElementById('ui-card-left');
 
             if (!isSwapped) {
+                // כחול (1) בימין, אדום (2) בשמאל
                 nameRight.innerText = teamNames.t1;
                 nameLeft.innerText = teamNames.t2;
                 scoreRight.innerText = state.s1;
                 scoreLeft.innerText = state.s2;
                 setsRight.innerText = state.sets1;
                 setsLeft.innerText = state.sets2;
+
                 scoreRight.className = "score color-p1";
                 scoreLeft.className = "score color-p2";
+                setsRight.className = "sets-count color-p1";
+                setsLeft.className = "sets-count color-p2";
             } else {
+                // אדום (2) בימין, כחול (1) בשמאל
                 nameRight.innerText = teamNames.t2;
                 nameLeft.innerText = teamNames.t1;
                 scoreRight.innerText = state.s2;
                 scoreLeft.innerText = state.s1;
                 setsRight.innerText = state.sets2;
                 setsLeft.innerText = state.sets1;
+
                 scoreRight.className = "score color-p2";
                 scoreLeft.className = "score color-p1";
+                setsRight.className = "sets-count color-p2";
+                setsLeft.className = "sets-count color-p1";
             }
 
+            // הגשות
             const server = getCurrentServer();
             if (!isSwapped) {
                 cardRight.classList.toggle('serving', server === 1);
@@ -264,15 +268,19 @@
 
         function checkWin() {
             let winner = 0;
+            let isTech = false;
             if (state.s1 >= 11 && (state.s1 - state.s2) >= 2) winner = 1;
             else if (state.s2 >= 11 && (state.s2 - state.s1) >= 2) winner = 2;
-            else if (state.s1 === 7 && state.s2 === 0) winner = 1;
-            else if (state.s2 === 7 && state.s1 === 0) winner = 2;
+            else if (state.s1 === 7 && state.s2 === 0) { winner = 1; isTech = true; }
+            else if (state.s2 === 7 && state.s1 === 0) { winner = 2; isTech = true; }
 
             if (winner > 0) {
                 if (winner === 1) state.sets1++; else state.sets2++;
                 const wName = (winner === 1) ? teamNames.t1 : teamNames.t2;
-                speak(`מערכה נגמרה. ${wName} ניצח.`);
+                
+                if (isTech) speak(`טכני! פירקו אותך שבע אפס! ${wName} ניצח.`);
+                else speak(`מערכה נגמרה. ${wName} ניצח.`);
+                
                 setTimeout(() => {
                     state.s1 = 0; state.s2 = 0;
                     lastServer = 1;
@@ -283,25 +291,15 @@
             return false;
         }
 
-        // זיהוי פקודות לפי מילות מפתח
-        function processTranscript(text) {
-            const words = text.toLowerCase().split(/\s+/);
-            
-            // בודק התאמה למילות מפתח
-            const contains = (list) => list.some(k => text.includes(k.toLowerCase()));
+        // שמירת שמות בזמן עריכה
+        document.getElementById('ui-name-right').addEventListener('input', function() {
+            if (!isSwapped) teamNames.t1 = this.innerText; else teamNames.t2 = this.innerText;
+        });
+        document.getElementById('ui-name-left').addEventListener('input', function() {
+            if (!isSwapped) teamNames.t2 = this.innerText; else teamNames.t1 = this.innerText;
+        });
 
-            if (contains(KEYWORDS.undo)) return triggerVoiceAction(() => undo());
-            if (contains(KEYWORDS.swap)) return triggerVoiceAction(() => swapSides());
-            
-            // בדיקה לפי שמות קבוצות דינמיים או מילות מפתח קבועות
-            if (contains(KEYWORDS.p1) || text.includes(teamNames.t1.toLowerCase())) {
-                return triggerVoiceAction(() => addPoint(1));
-            }
-            if (contains(KEYWORDS.p2) || text.includes(teamNames.t2.toLowerCase())) {
-                return triggerVoiceAction(() => addPoint(2));
-            }
-        }
-
+        // קול
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (SpeechRecognition) {
             const recognition = new SpeechRecognition();
@@ -311,32 +309,39 @@
 
             recognition.onresult = (event) => {
                 if (isProcessing) return;
-                const transcript = event.results[event.results.length - 1][0].transcript.trim();
-                document.getElementById('status').innerText = 'שומע: ' + transcript;
-                processTranscript(transcript);
-            };
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const transcript = event.results[i][0].transcript.trim().toLowerCase();
+                    document.getElementById('status').innerText = 'שומע: ' + transcript;
 
+                    if (transcript.match(/ביטול|חזור|טעות/)) {
+                        triggerVoiceAction(() => undo()); break;
+                    } 
+                    if (transcript.match(/צדדים|החלף צד|תחליף צד|שנה צד/)) {
+                        triggerVoiceAction(() => swapSides()); break;
+                    }
+                    if (transcript.match(new RegExp(teamNames.t1 + "|כחול|כחו|חול"))) {
+                        triggerVoiceAction(() => addPoint(1)); break;
+                    }
+                    if (transcript.match(new RegExp(teamNames.t2 + "|אדום|אדו|דום"))) {
+                        triggerVoiceAction(() => addPoint(2)); break;
+                    }
+                }
+            };
             recognition.onend = () => { if (isListening) recognition.start(); };
             
             window.toggleVoice = function() {
                 enableNoSleep();
                 isListening = !isListening;
-                if (isListening) { 
-                    recognition.start(); 
-                    document.getElementById('voice-btn').classList.add('active'); 
-                    document.getElementById('status').innerText = "מקשיב...";
-                } else { 
-                    recognition.stop(); 
-                    document.getElementById('voice-btn').classList.remove('active'); 
-                    document.getElementById('status').innerText = "כבוי";
-                }
+                if (isListening) { recognition.start(); document.getElementById('voice-btn').classList.add('active'); }
+                else { recognition.stop(); document.getElementById('voice-btn').classList.remove('active'); }
             };
-        }
 
-        function triggerVoiceAction(action) {
-            isProcessing = true;
-            action();
-            setTimeout(() => { isProcessing = false; }, 1600); 
+            function triggerVoiceAction(action) {
+                isProcessing = true;
+                action();
+                recognition.stop();
+                setTimeout(() => { isProcessing = false; }, 1600); 
+            }
         }
 
         async function enableNoSleep() {
