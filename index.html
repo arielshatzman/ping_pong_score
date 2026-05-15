@@ -132,10 +132,25 @@
 
         // --- הקראת קול ---
         function speak(text) {
+            window.speechSynthesis.cancel(); // עוצר הקראות קודמות כדי שלא יהיה דיליי
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'he-IL';
             utterance.rate = 1.1;
             window.speechSynthesis.speak(utterance);
+        }
+
+        // פונקציה ייעודית להקראת התוצאה לפי הבקשה שלך
+        function announceScore() {
+            const name1 = document.getElementById('name-1').innerText;
+            const name2 = document.getElementById('name-2').innerText;
+            
+            if (state.s1 === state.s2) {
+                speak(`${state.s1} שווה`);
+            } else if (state.s1 > state.s2) {
+                speak(`${state.s1} ${state.s2} ${name1}`);
+            } else {
+                speak(`${state.s2} ${state.s1} ${name2}`);
+            }
         }
 
         // --- מניעת שינה משופרת ---
@@ -209,7 +224,7 @@
                     if (transcript.match(/(החלף צד|צדדים|תחליף)/)) { swapSides(); recognition.stop(); break; }
                     if (transcript.match(/(ביטול|טעות|חזור|ביטו)/)) { undo(); recognition.stop(); break; } 
 
-                    // נקודות לפי שמות נוכחיים או צבעים
+                    // נקודות
                     const name1 = document.getElementById('name-1').innerText.trim().toLowerCase();
                     const name2 = document.getElementById('name-2').innerText.trim().toLowerCase();
 
@@ -247,15 +262,19 @@
             if (player === 1) state.s1++; else state.s2++;
             
             updateUI();
-            speak(`${state.s1} ${state.s2}`);
-            checkWin();
+            
+            // בדיקה אם המערכה נגמרה לפני שמקריאים תוצאה רגילה
+            if (!checkWin()) {
+                announceScore();
+            }
         }
 
         function undo() {
             if (history.length > 0) {
                 state = history.pop();
                 updateUI();
-                speak("בוצע ביטול");
+                speak("ביטול");
+                setTimeout(announceScore, 600);
             }
         }
 
@@ -292,7 +311,9 @@
                     state.s1 = 0; state.s2 = 0;
                     updateUI();
                 }, 100);
+                return true;
             }
+            return false;
         }
 
         function resetGame() {
@@ -300,7 +321,7 @@
                 state = { s1: 0, s2: 0, sets1: 0, sets2: 0 };
                 history = [];
                 updateUI();
-                speak("המשחק אופס");
+                speak("המשחק מתאפס");
             }
         }
 
