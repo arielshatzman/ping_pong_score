@@ -55,6 +55,21 @@
             100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
         }
 
+        /* תצוגת מערכות קבועה */
+        .sets-header {
+            display: flex;
+            justify-content: center;
+            gap: 100px;
+            margin-bottom: 10px;
+        }
+        .set-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .set-label { font-size: 0.8rem; opacity: 0.7; margin-bottom: 2px; }
+        .sets-count { font-size: 2rem; font-weight: bold; background: rgba(0,0,0,0.3); padding: 5px 20px; border-radius: 10px; }
+
         .scoreboard { 
             display: flex; gap: 15px; justify-content: center; width: 100%; 
             transition: flex-direction 0.5s ease;
@@ -70,7 +85,6 @@
         .score { font-size: clamp(4.5rem, 18vw, 11rem); font-weight: 900; line-height: 1; margin: 10px 0; font-family: monospace; pointer-events: none; }
         .p1-text { color: var(--p1-color); }
         .p2-text { color: var(--p2-color); }
-        .sets-count { font-size: 1.5rem; background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 10px; align-self: center; pointer-events: none; }
 
         .controls { margin-top: 30px; display: flex; gap: 10px; justify-content: center; width: 100%; flex-wrap: wrap; }
         .action-btn { padding: 12px; font-size: 0.9rem; font-weight: bold; border: none; border-radius: 12px; cursor: pointer; flex: 1; min-width: 100px; max-width: 150px; }
@@ -98,16 +112,25 @@
             <div class="status-msg" id="status">מוכן...</div>
         </div>
 
+        <div class="sets-header">
+            <div class="set-box">
+                <div class="set-label">מערכות כחול</div>
+                <div class="sets-count" id="sets-1">0</div>
+            </div>
+            <div class="set-box">
+                <div class="set-label">מערכות אדום</div>
+                <div class="sets-count" id="sets-2">0</div>
+            </div>
+        </div>
+
         <div class="scoreboard" id="board">
             <div class="player-card" id="card-1" onclick="handleManualPoint(1)">
                 <div class="player-name" id="name-1" contenteditable="true" onclick="event.stopPropagation()">כחול</div>
                 <div class="score p1-text" id="score-1">0</div>
-                <div class="sets-count" id="sets-1">0</div>
             </div>
             <div class="player-card" id="card-2" onclick="handleManualPoint(2)">
                 <div class="player-name" id="name-2" contenteditable="true" onclick="event.stopPropagation()">אדום</div>
                 <div class="score p2-text" id="score-2">0</div>
-                <div class="sets-count" id="sets-2">0</div>
             </div>
         </div>
 
@@ -129,18 +152,16 @@
         let lastPointTime = 0;
         let isSwapped = false;
         let wakeLock = null;
-        let lastServer = 1; // מעקב אחרי המגיש הקודם
+        let lastServer = 1;
 
-        // --- הקראת קול ---
         function speak(text) {
-            window.speechSynthesis.cancel(); // עוצר הקראות קודמות כדי שלא יהיה דיליי
+            window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'he-IL';
             utterance.rate = 1.1;
             window.speechSynthesis.speak(utterance);
         }
 
-        // פונקציה ייעודית להקראת התוצאה לפי הבקשה שלך
         function announceScore() {
             const name1 = document.getElementById('name-1').innerText;
             const name2 = document.getElementById('name-2').innerText;
@@ -154,7 +175,6 @@
                 scoreText = `${state.s2} ${state.s1} ${name2}`;
             }
 
-            // בדיקה אם המגיש התחלף
             const currentServer = getCurrentServer();
             if (currentServer !== lastServer) {
                 const serverName = currentServer === 1 ? name1 : name2;
@@ -167,15 +187,12 @@
 
         function getCurrentServer() {
             const total = state.s1 + state.s2;
-            // אם הגענו ל-10-10, מגישים כל פעם אחד
             if (state.s1 >= 10 && state.s2 >= 10) {
                 return (total % 2 === 0 ? 1 : 2);
             }
-            // בדרך כלל מגישים כל 2 נקודות
             return (Math.floor(total / 2) % 2 === 0 ? 1 : 2);
         }
 
-        // --- מניעת שינה משופרת ---
         async function enableNoSleep() {
             if (isNoSleepActive) return;
             const video = document.getElementById('no-sleep-video');
@@ -224,7 +241,6 @@
 
                     if (!event.results[i].isFinal) continue;
 
-                    // פקודת שינוי שם: "שנה שם של כחול ליוסי"
                     if (transcript.includes("שם") && transcript.includes(" ל")) {
                         let targetPlayer = 0;
                         if (transcript.includes("כחול") || transcript.includes("1") || transcript.includes("אחד")) targetPlayer = 1;
@@ -242,11 +258,9 @@
                         }
                     }
 
-                    // פקודות ניווט
                     if (transcript.match(/(החלף צד|צדדים|תחליף)/)) { swapSides(); recognition.stop(); break; }
                     if (transcript.match(/(ביטול|טעות|חזור|ביטו)/)) { undo(); recognition.stop(); break; } 
 
-                    // נקודות
                     const name1 = document.getElementById('name-1').innerText.trim().toLowerCase();
                     const name2 = document.getElementById('name-2').innerText.trim().toLowerCase();
 
@@ -285,7 +299,6 @@
             
             updateUI();
             
-            // בדיקה אם המערכה נגמרה לפני שמקריאים תוצאה רגילה
             if (!checkWin()) {
                 announceScore();
             }
@@ -294,7 +307,7 @@
         function undo() {
             if (history.length > 0) {
                 state = history.pop();
-                lastServer = getCurrentServer(); // עדכון המגיש חזרה לאחור
+                lastServer = getCurrentServer();
                 updateUI();
                 speak("ביטול");
                 setTimeout(announceScore, 600);
@@ -328,12 +341,12 @@
                 
                 speak(`מערכה נגמרה. ${winnerName} ניצח.`);
                 
+                // איפוס אוטומטי ללא התראה
                 setTimeout(() => {
-                    alert(`המערכה נגמרה! המנצח: ${winnerName}`);
                     state.s1 = 0; state.s2 = 0;
-                    lastServer = 1; // איפוס המגיש לתחילת מערכה
+                    lastServer = 1;
                     updateUI();
-                }, 100);
+                }, 1500); // השהייה קלה כדי שיהיה אפשר לראות את הניקוד הסופי
                 return true;
             }
             return false;
